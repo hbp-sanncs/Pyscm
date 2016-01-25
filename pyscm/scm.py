@@ -17,15 +17,15 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import pynam
+import pynam.network
 import pynnless as pynl
 
 
 class SpikeCounterModel:
-    def __init__(self, mat_in, mat_out, params={}, _type=pynl.TYPE_IF_COND_EXP):
+    def __init__(self, mat_in, mat_out, _type=pynl.TYPE_IF_COND_EXP):
         # Copy the given reference to the input and output data vectors
         self.mat_in = mat_in
         self.mat_out = mat_out
-        self.params = params
         self._type = _type
 
         # Train the matrices CH and CA
@@ -34,18 +34,24 @@ class SpikeCounterModel:
         self.mat_CH = pynam.BiNAM().train_matrix(mat_in, mat_out)
         self.mat_CA = pynam.BiNAM().train_matrix(mat_out, mat_out)
 
-    def build(self):
+    def build(self, weights, params={}, input_params={}, delay=0.1):
         net = pynl.Network()
 
+        # Create the input spike trains
+        trains, _, _ = pynam.network.NetworkBuilder.build_spike_trains(self.mat_in, 0,
+                                                                 input_params=input_params)
+
         # Create the individual cell assemblies
-        pop_C = pynl.Population(count=self.n_bits_out, _type=self._type, params=self.params,
-                                     record=[pynl.SIG_SPIKES])
+        pop_C = pynl.Population(count=self.n_bits_out, _type=self._type, params=params,
+                                record=[pynl.SIG_SPIKES])
         pop_CS = pynl.Population(pop_C)
-        pop_CT = pynl.Population(count=1, _type=self._type, params=self.params, record=[pynl.SIG_SPIKES])
-        pop_source = pynl.Population(count=self.n_bits_in, _type=pynl.TYPE_SOURCE)
+        pop_CT = pynl.Population(count=1, _type=self._type, params=params, record=[pynl.SIG_SPIKES])
+        pop_source = pynl.Population(count=self.n_bits_in, _type=pynl.TYPE_SOURCE, params={
+            "spike_times": trains
+        }, record=[pynl.SIG_SPIKES])
 
         # Create the connections
-        def connections_from_matrix(mat, pSrc, pTar, w, delay=0.0):
+        def connections_from_matrix(mat, pSrc, pTar, w):
             connections = []
             for i in xrange(mat.shape[0]):
                 for j in xrange(mat.shape[1]):
@@ -53,29 +59,41 @@ class SpikeCounterModel:
                         connections.append(((pSrc, i), (pTar, j), w, delay))
             return connections
 
-        def connections_all_to_all(m, n, pSrc, pTar, w, delay=0.0):
+        def connections_all_to_all(m, n, pSrc, pTar, w):
             connections = map(lambda _: [], xrange(m * n))
             for i in xrange(m):
                 for j in xrange(n):
                     connections[i * n + j] = (((pSrc, i), (pTar, j), w, delay))
             return connections
 
-        wExc = 1.0
-        wInh = -1.0
+        wCH = weights["wCH"]
+        wCA = weights["wCA"]
+        wCSigma = weights["wCSigma"]
+        wCTExt = weights["wCTExt"]
+        wCTInh = weights["wCTInh"]
+        wAbort = weights["wAbort"]
         iC = 0
         iCS = 1
         iCT = 2
         iSource = 3
         connections = (
-            connections_from_matrix(self.mat_CH, iSource, iC, wExc) +
-            connections_from_matrix(self.mat_CH, iSource, iCS, wExc) +
-            connections_from_matrix(self.mat_CH, iC, iCS, wExc) +
-            connections_from_matrix(self.mat_CA, iC, iC, wExc) +
-            connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS, iCS, wInh) +
-            connections_all_to_all(self.n_bits_out, 1, iCS, iCT, wInh) +
-            connections_all_to_all(1, self.n_bits_out, iCT, iCS, wInh) +
-            connections_all_to_all(self.n_bits_out, 1, iC, iCT, wExc) +
-            connections_all_to_all(1, self.n_bits_out, iCT, iC, wInh)
+            connections_from_matrix(self.mat_CH, iSource, iC, wCH) +
+            connections_from_matrix(self.mat_CH, iSource, iCS, wCH) +
+            connections_from_matrix(self.mat_CH, iC, iCS, wCA) +
+            connections_from_matrix(self.mat_CA, iC, iC, wCA) +
+
+            # Sigma connections
+            connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS, iCS, wCSigma) +
+            connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS, iC, wCSigma) +
+
+            # Connections to CT
+            connections_all_to_all(self.n_bits_out, 1, iC, iCT, wCTExt) +
+            connections_all_to_all(self.n_bits_out, 1, iCS, iCT, wCTInh) +
+
+            # Connections from CT to all other populations
+            connections_all_to_all(1, self.n_bits_out, iCT, iC, wAbort) +
+            connections_all_to_all(1, self.n_bits_out, iCT, iCS, wAbort) +
+            connections_all_to_all(1, 1, iCT, iCT, wAbort)
         )
 
-        return pynl.Network(populations = [pop_C, pop_CS, pop_CT, pop_source], connections=connections)
+        return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source], connections=connections)
