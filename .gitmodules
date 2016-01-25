@@ -1,0 +1,3 @@
+[submodule "lib/pynam"]
+	path = lib/pynam
+	url = https://github.com/hbp-sanncs/pynam
