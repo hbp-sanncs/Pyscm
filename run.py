@@ -91,18 +91,26 @@ for pIdx, pop in enumerate(res):
 
 output_times, output_indices = netw.NetworkInstance.match_static(input_times,
                                                                  input_indices,
-                                                                 res[0]["spikes"])
+                                                                 res[0][
+                                                                     "spikes"])
 
 # Missing parameters?
-analysis = netw.NetworkAnalysis(input_times=input_times, input_indices=input_indices,
+analysis = netw.NetworkAnalysis(input_times=input_times,
+                                input_indices=input_indices,
                                 output_times=output_times,
                                 output_indices=output_indices,
                                 mat_in=mat_in, mat_out=mat_out)
 
-I, mat_out_res, errs = analysis.calculate_storage_capactiy(netw.OutputParameters(burst_size=10))
+I, mat_out_res, errs = analysis.calculate_storage_capactiy(
+    netw.OutputParameters(burst_size=10))
+I_ref, mat_ref, errs_ref = analysis.calculate_max_storage_capacity()
+I_norm = 0.0 if I_ref == 0.0 else I / float(I_ref)
+fp = sum(map(lambda x: x["fp"], errs))
+fn = sum(map(lambda x: x["fn"], errs))
 
 print "Information:", I
-print mat_out_res
-print errs
+print "Normalized information:", I_norm
+print "False positives:", fp
+print "False negatives:", fn
 
 plt.show()
