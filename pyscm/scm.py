@@ -38,17 +38,16 @@ class SpikeCounterModel:
         net = pynl.Network()
 
         # Create the input spike trains
-        trains, _, _ = pynam.network.NetworkBuilder.build_spike_trains(self.mat_in, 0,
-                                                                 input_params=input_params)
+        trains, input_indices, input_split = pynam.network.NetworkBuilder.build_spike_trains(self.mat_in, 0,
+                                                                                             input_params=input_params)
 
         # Create the individual cell assemblies
         pop_C = pynl.Population(count=self.n_bits_out, _type=self._type, params=params,
                                 record=[pynl.SIG_SPIKES])
         pop_CS = pynl.Population(pop_C)
         pop_CT = pynl.Population(count=1, _type=self._type, params=params, record=[pynl.SIG_SPIKES])
-        pop_source = pynl.Population(count=self.n_bits_in, _type=pynl.TYPE_SOURCE, params={
-            "spike_times": trains
-        }, record=[pynl.SIG_SPIKES])
+        pop_source = pynl.Population(count=self.n_bits_in, _type=pynl.TYPE_SOURCE,
+                                     params=map(lambda train: {"spike_times": train}, trains), record=[pynl.SIG_SPIKES])
 
         # Create the connections
         def connections_from_matrix(mat, pSrc, pTar, w):
@@ -96,4 +95,5 @@ class SpikeCounterModel:
             connections_all_to_all(1, 1, iCT, iCT, wAbort)
         )
 
-        return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source], connections=connections)
+        return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source],
+                            connections=connections), input_indices, input_split, trains
