@@ -30,20 +30,20 @@ if len(sys.argv) != 2:
     print("Usage: " + sys.argv[0] + " <SIMULATOR>")
     sys.exit(1)
 
-params = {
-    "v_rest": -50,
-    "v_thresh": -1,
-    "e_rev_E": 0,
-    "e_rev_I": -100,
-    "tau_syn_E": 5,
-    "tau_syn_I": 5,
-    "tau_m": 5
-}
-
+# params = {
+#     "v_rest": -70,
+#     "v_thresh": -10,
+#     "e_rev_E": 0,
+#     "e_rev_I": -85,
+#     "tau_syn_E": 5,
+#     "tau_syn_I": 5,
+#     "tau_m": 5
+# }
+# 0,001 bis 0,016 Allgemein <1
 # weights = {
 #     "wCH": 6.27,
 #     "wCA": 18.0,
-#     "wCSigma": -0.1,
+#     "wCSigma": -1.5,
 #     "wCTExt": 1.046,
 #     "wCTInh": -0.01,
 #     "wAbort": -2000.0
@@ -53,30 +53,49 @@ params = {
 # n_ones_in = 2
 # n_ones_out = 4
 # n_samples = 6
+params = {
+    "v_rest": -70,
+    "v_thresh": -50,
+    "e_rev_E": 0,
+    "e_rev_I": -85,
+    "tau_syn_E": 5,
+    "tau_syn_I": 5,
+    "tau_m": 5
+}
+# weights = { #Samples 150
+#     "wCH": 0.1,
+#     "wCA": 0.1,
+#     "wCSigma": -0.05,
+#     "wCTExt": 0.0585,#0.080
+#     "wCTInh": -0.001,#-0.06,
+#     "wAbort": -1.0
+# }
 
 weights = {
-    "wCH": 3.25,
-    "wCA": 12.6,
-    "wCSigma": -0.1,
-    "wCTExt": 0.5,
-    "wCTInh": -0.002,
-    "wAbort": -2000.0
+    "wCH": 0.1,
+    "wCA": 0.105,
+    "wCSigma": -0.05,
+    "wCTExt": 0.082,
+    "wCTInh": -0.001,
+    "wAbort": -1.0
 }
+
 n_bits_in = 100
 n_bits_out = 100
 n_ones_in = 4
 n_ones_out = 4
-n_samples = 200
+n_samples = 100
 
 mat_in = data.generate(n_bits_in, n_ones_in, n_samples)
 mat_out = data.generate(n_bits_out, n_ones_out, n_samples)
-
+print "Data generated!"
 scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 
 sim = pynl.PyNNLess(sys.argv[1])
 net, input_indices, _, input_times = scm.build(params=params, weights=weights)
+print "Preparations done"
 res = sim.run(net)
-
+print "Simulation done"
 for pIdx, pop in enumerate(res):
     if (not "spikes" in pop):
         continue
@@ -101,8 +120,10 @@ analysis = netw.NetworkAnalysis(input_times=input_times,
                                 output_indices=output_indices,
                                 mat_in=mat_in, mat_out=mat_out)
 
-I, mat_out_res, errs = analysis.calculate_storage_capactiy(
-    netw.OutputParameters(burst_size=10))
+# I, mat_out_res, errs = analysis.calculate_storage_capactiy(
+#    netw.OutputParameters(burst_size=3))
+I, mat_out_res, errs = pyscm.scm_analysis(analysis, res[2][
+    "spikes"])
 I_ref, mat_ref, errs_ref = analysis.calculate_max_storage_capacity()
 I_norm = 0.0 if I_ref == 0.0 else I / float(I_ref)
 fp = sum(map(lambda x: x["fp"], errs))

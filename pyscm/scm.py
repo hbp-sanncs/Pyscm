@@ -19,6 +19,8 @@
 import pynam
 import pynam.network
 import pynnless as pynl
+import pynam.entropy as entropy
+import numpy as np
 
 
 class SpikeCounterModel:
@@ -105,3 +107,41 @@ class SpikeCounterModel:
 
         return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source],
                             connections=connections), input_indices, input_split, trains
+
+
+def calc_scm_output_matrix(netw, terminate_times):
+    # Flaten the output spike sample indices and neuron indices
+    # times, kOut, nOut = pynam.network.NetworkInstance.flaten(
+    #     netw["output_times"],
+    #     netw["output_indices"],
+    #     sort_by_sample=True)
+    times = netw["output_times"]
+    kOut = netw["output_indices"]
+
+    # Create the output matrix
+    if hasattr(netw["mat_out"], "shape"):
+        N, n = netw["mat_out"].shape
+    else:
+        N = netw["data_params"]["n_samples"]
+        n = netw["data_params"]["n_bits_out"]
+    res = np.zeros((N, n))
+    for k in xrange(n):
+        for l in xrange(len(times[k])):
+            for j in xrange(len(terminate_times[0])):
+                if ((terminate_times[0][j] - 0.11 <= times[k][l]) &
+                        (times[k][l] <= terminate_times[0][j])):
+                    res[kOut[k][l]][k] = 1
+    return res
+
+
+def scm_analysis(netw, terminate_times):
+    """
+    Anaylsis of the scm
+    :param netw: Should be of networkanalysis type
+    :return:
+    """
+    mat_out_res = calc_scm_output_matrix(netw, terminate_times)
+    N, n = mat_out_res.shape
+    errs = entropy.calculate_errs(mat_out_res, netw["mat_out"])
+    I = entropy.entropy_hetero(errs, n, netw["data_params"]["n_ones_out"])
+    return I, mat_out_res, errs

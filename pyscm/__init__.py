@@ -19,13 +19,13 @@
 # Automatically include lib/pynam if present
 import os
 import sys
-sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__),
-       "../lib/pynam")))
 
-from scm import SpikeCounterModel
+sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__),
+                                              "../lib/pynam")))
+
+from scm import SpikeCounterModel, calc_scm_output_matrix, scm_analysis
 
 # Current version of "PySCM"
 __version__ = "1.0.0"
 
 __all__ = ["SpikeCounterModel"]
-
