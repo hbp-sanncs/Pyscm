@@ -84,7 +84,7 @@ class SpikeCounterModel:
         connections = (
             connections_from_matrix(self.mat_CH, iSource, iC, wCH) +
             connections_from_matrix(self.mat_CH, iSource, iCS, wCH) +
-            connections_from_matrix(self.mat_CH, iC, iCS, wCA) +
+            connections_from_matrix(self.mat_CA, iC, iCS, wCA) +
             connections_from_matrix(self.mat_CA, iC, iC, wCA) +
 
             # Sigma connections
