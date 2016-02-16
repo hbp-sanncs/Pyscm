@@ -109,12 +109,14 @@ class SpikeCounterModel:
                             connections=connections), input_indices, input_split, trains
 
 
-def calc_scm_output_matrix(netw, terminate_times):
-    # Flaten the output spike sample indices and neuron indices
-    # times, kOut, nOut = pynam.network.NetworkInstance.flaten(
-    #     netw["output_times"],
-    #     netw["output_indices"],
-    #     sort_by_sample=True)
+def calc_scm_output_matrix(netw, terminate_times, delay):
+    """
+    Calculate the output matrix given at the time, where the termination neuron spikes
+    :param netw: a NetworkAnalysis object
+    :param terminate_times: The times, where the termination neuron spikes
+    :param delay: delay of the neuron weights
+    :return: The SCM output matrix
+    """
     times = netw["output_times"]
     kOut = netw["output_indices"]
 
@@ -128,20 +130,63 @@ def calc_scm_output_matrix(netw, terminate_times):
     for k in xrange(n):
         for l in xrange(len(times[k])):
             for j in xrange(len(terminate_times[0])):
-                if ((terminate_times[0][j] - 0.11 <= times[k][l]) &
+                if ((terminate_times[0][j] - (delay * 1.1) <= times[k][l]) &
                         (times[k][l] <= terminate_times[0][j])):
                     res[kOut[k][l]][k] = 1
     return res
 
 
-def scm_analysis(netw, terminate_times):
+def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     """
-    Anaylsis of the scm
-    :param netw: Should be of networkanalysis type
-    :return:
+    Anaylsis of the scm and compare to normal PyNAM (first spikes after input spike)
+    :param netw: Should be of NetworkAnalysis type
+    :return: Information in the SCM, output-matrix and an errors object
     """
-    mat_out_res = calc_scm_output_matrix(netw, terminate_times)
+
+    # Calculate the SCM  information
+    mat_out_res = calc_scm_output_matrix(netw, terminate_times, delay)
     N, n = mat_out_res.shape
     errs = entropy.calculate_errs(mat_out_res, netw["mat_out"])
     I = entropy.entropy_hetero(errs, n, netw["data_params"]["n_ones_out"])
+
+    # Get the spike times of the source population
+    tem, _, _ = pynam.network.NetworkInstance.flaten(netw["input_times"],
+                                                     netw["input_indices"])
+    start_times = np.unique(tem)
+    # PyNNless sets the first inputspikes to offset if they appear before the offset
+    for i in xrange(len(start_times)):
+        if (start_times[i] < time_offs):
+            start_times[i] = time_offs
+    start_times = start_times + 1.1 + delay * 1.1
+    # calc_scm_output_matrix needs such an array
+    start_times_ar = np.zeros((2, len(start_times)))
+    start_times_ar[0] = start_times
+
+    # Finally calculate the BiNAM information from the start
+    mat_out_first = calc_scm_output_matrix(netw, start_times_ar, delay)
+    errs_start = entropy.calculate_errs(mat_out_first, netw["mat_out"])
+    I_start = entropy.entropy_hetero(errs_start, n,
+                                     netw["data_params"]["n_ones_out"])
+
+    # Calculate non-spiking information for REFerence
+    I_ref, mat_ref, errs_ref = netw.calculate_max_storage_capacity()
+    # Noramlized information values
+    I_norm = 0.0 if I_ref == 0.0 else I / float(I_ref)
+    I_norm_start = 0.0 if I_ref == 0.0 else I_start / float(I_ref)
+
+    # The number of False Positives and Negatives for both SCM and BiNAM
+    fp = sum(map(lambda x: x["fp"], errs))
+    fn = sum(map(lambda x: x["fn"], errs))
+    fp_start = sum(map(lambda x: x["fp"], errs_start))
+    fn_start = sum(map(lambda x: x["fn"], errs_start))
+
+    print "\t\t\t\t\t\tBiNAM \t\tSCM"
+    print "Information:\t\t\t", format(I_start, '.2f'), "\t", format(I, '.2f')
+    print "Normalized information:\t", format(I_norm_start,
+                                              '.2f'), "\t\t", format(I_norm,
+                                                                   '.2f')
+    print "False positives:\t\t", format(fp_start, '.0f'), "\t\t\t", format(fp,
+                                                                            '.0f')
+    print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t\t", format(fn,
+                                                                            '.0f')
     return I, mat_out_res, errs

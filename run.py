@@ -62,6 +62,7 @@ params = {
     "tau_syn_I": 5,
     "tau_m": 5
 }
+delay = 0.1
 # weights = { #Samples 150
 #     "wCH": 0.1,
 #     "wCA": 0.1,
@@ -96,7 +97,8 @@ print "Data generated!"
 scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 
 sim = pynl.PyNNLess(sys.argv[1])
-net, input_indices, _, input_times = scm.build(params=params, weights=weights)
+net, input_indices, _, input_times = scm.build(params=params, weights=weights,
+                                               delay=delay)
 print "Preparations done"
 res = sim.run(net)
 print "Simulation done"
@@ -117,26 +119,15 @@ output_times, output_indices = netw.NetworkInstance.match_static(input_times,
                                                                  res[0][
                                                                      "spikes"])
 
-# Missing parameters?
 analysis = netw.NetworkAnalysis(input_times=input_times,
                                 input_indices=input_indices,
                                 output_times=output_times,
                                 output_indices=output_indices,
                                 data_params=data_params,
                                 mat_in=mat_in, mat_out=mat_out)
-
-# I, mat_out_res, errs = analysis.calculate_storage_capactiy(
-#    netw.OutputParameters(burst_size=3))
+# PyNNless sets the first inputspikes to offset if they appear before the offset
+offset = max(sim.get_time_step(), 1.0)
 I, mat_out_res, errs = pyscm.scm_analysis(analysis, res[2][
-    "spikes"])
-I_ref, mat_ref, errs_ref = analysis.calculate_max_storage_capacity()
-I_norm = 0.0 if I_ref == 0.0 else I / float(I_ref)
-fp = sum(map(lambda x: x["fp"], errs))
-fn = sum(map(lambda x: x["fn"], errs))
-
-print "Information:", I
-print "Normalized information:", I_norm
-print "False positives:", fp
-print "False negatives:", fn
+    "spikes"], delay, offset)
 
 plt.show()
