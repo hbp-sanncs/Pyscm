@@ -86,6 +86,10 @@ n_ones_in = 4
 n_ones_out = 4
 n_samples = 100
 
+data_params = netw.DataParameters(n_bits_in=n_bits_in, n_bits_out=n_bits_out,
+                                  n_ones_in=n_ones_in, n_ones_out=n_ones_out,
+                                  n_samples=n_samples)
+
 mat_in = data.generate(n_bits_in, n_ones_in, n_samples)
 mat_out = data.generate(n_bits_out, n_ones_out, n_samples)
 print "Data generated!"
@@ -118,6 +122,7 @@ analysis = netw.NetworkAnalysis(input_times=input_times,
                                 input_indices=input_indices,
                                 output_times=output_times,
                                 output_indices=output_indices,
+                                data_params=data_params,
                                 mat_in=mat_in, mat_out=mat_out)
 
 # I, mat_out_res, errs = analysis.calculate_storage_capactiy(
