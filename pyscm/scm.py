@@ -109,12 +109,13 @@ class SpikeCounterModel:
                             connections=connections), input_indices, input_split, trains
 
 
-def calc_scm_output_matrix(netw, terminate_times, delay):
+def calc_scm_output_matrix(netw, terminate_times, delay, flag=min):
     """
     Calculate the output matrix given at the time, where the termination neuron spikes
     :param netw: a NetworkAnalysis object
     :param terminate_times: The times, where the termination neuron spikes
     :param delay: delay of the neuron weights
+    :param flag: either min for the BiNAM (Spikes at the beginning) or max for spikes at the end (SCM)
     :return: The SCM output matrix
     """
     times = netw["output_times"]
@@ -127,12 +128,46 @@ def calc_scm_output_matrix(netw, terminate_times, delay):
         N = netw["data_params"]["n_samples"]
         n = netw["data_params"]["n_bits_out"]
     res = np.zeros((N, n))
-    for k in xrange(n):
-        for l in xrange(len(times[k])):
-            for j in xrange(len(terminate_times[0])):
-                if ((terminate_times[0][j] - (delay * 1.1) <= times[k][l]) &
-                        (times[k][l] <= terminate_times[0][j])):
-                    res[kOut[k][l]][k] = 1
+
+    # Calculation of the output matrix
+    for k in xrange(N):
+        time = []
+
+
+        # Search for the first spike in each sample
+        if (flag == min):
+            for l in xrange(n):
+                # Spike_time index for the first Spike in this sample for neuron l
+                # If l did not spike in this sample, set to -1
+                m = next((i for i in xrange(len(kOut[l])) if kOut[l][i] == k),
+                         -1.0)
+                if (m >= 0):
+                    time.append(times[l][m])
+            cal_time = np.amin(time) + delay
+        # Search for the last spike in each sample
+
+
+        if (flag == max):
+            for l in xrange(n):
+                # Spike_time index for the first Spike in this sample for neuron l
+                # If l did not spike in this sample, set to -1
+                m = next((i for i in xrange(len(kOut[l])) if kOut[l][i] == k),
+                         -1.0)
+                if (m >= 0):
+                    # If l spiked, take the last spike belonging to that sample
+                    m += kOut[l].count(k) - 1
+                    time.append(times[l][m])
+            cal_time = np.amax(time)
+            # TODO get sure that it is terminated
+        # cal_time is the stopping time for the search for spikes beloning to sample k
+
+        # If neuron l spikes in a certain intervall, set matrix element to 1
+        # TODO 0.35 is guessed, works in this example
+        for l in xrange(n):
+            for m in times[l]:
+                if ((cal_time - 0.35 <= m) & (m <= cal_time)):
+                    res[k, l] = 1.0
+
     return res
 
 
@@ -144,7 +179,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     """
 
     # Calculate the SCM  information
-    mat_out_res = calc_scm_output_matrix(netw, terminate_times, delay)
+    mat_out_res = calc_scm_output_matrix(netw, terminate_times, delay, max)
     N, n = mat_out_res.shape
     errs = entropy.calculate_errs(mat_out_res, netw["mat_out"])
     I = entropy.entropy_hetero(errs, n, netw["data_params"]["n_ones_out"])
@@ -157,7 +192,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     for i in xrange(len(start_times)):
         if (start_times[i] < time_offs):
             start_times[i] = time_offs
-    start_times = start_times + 1.1 + delay * 1.1
+    start_times = start_times + 0.98 + delay * 2.5
     # calc_scm_output_matrix needs such an array
     start_times_ar = np.zeros((2, len(start_times)))
     start_times_ar[0] = start_times
@@ -184,7 +219,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     print "Information:\t\t\t", format(I_start, '.2f'), "\t", format(I, '.2f')
     print "Normalized information:\t", format(I_norm_start,
                                               '.2f'), "\t\t", format(I_norm,
-                                                                   '.2f')
+                                                                     '.2f')
     print "False positives:\t\t", format(fp_start, '.0f'), "\t\t\t", format(fp,
                                                                             '.0f')
     print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t\t", format(fn,
