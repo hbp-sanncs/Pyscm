@@ -41,7 +41,7 @@ class SpikeCounterModel:
 
         # Create the input spike trains
         trains, input_indices, input_split = pynam.network.NetworkBuilder.build_spike_trains(
-            self.mat_in, 0,
+            self.mat_in, 100,
             input_params=input_params)
 
         # Create the individual cell assemblies
