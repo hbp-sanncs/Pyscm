@@ -30,39 +30,55 @@ if len(sys.argv) != 2:
     print("Usage: " + sys.argv[0] + " <SIMULATOR>")
     sys.exit(1)
 
-params = {
-    "v_rest": -70.6,
-    "v_thresh": -40,
-    "e_rev_E": 0,
-    "e_rev_I": -85,
-    "tau_syn_E": 5,
-    "tau_syn_I": 5,
-    "tau_m": 5
-}
-delay = 0.1
+# params = {
+#     "v_rest": -70.6,
+#     "v_thresh": -40,
+#     "e_rev_E": 0,
+#     "e_rev_I": -85,
+#     "tau_syn_E": 5,
+#     "tau_syn_I": 5,
+#     "tau_m": 5
+# }
+# delay = 0.1
+#
+#
+# weights = { #Samples 200
+#     "wCH": 0.09,
+#     "wCA": 0.07,
+#     "wCSigma": -0.029,
+#     "wCTExt": 0.02,#0.080
+#     "wCTInh": -0.001,#-0.06,
+#     "wAbort": -1.0
+# }
+# weights["wCH"]=0.089
+# weights["wCA"]=0.043
+# n_bits_in = 100
+# n_bits_out = 100
+# n_ones_in = 4
+# n_ones_out = 4
+# n_samples = 200
+#
+# data_params = netw.DataParameters(n_bits_in=n_bits_in, n_bits_out=n_bits_out,
+#                                   n_ones_in=n_ones_in, n_ones_out=n_ones_out,
+#                                   n_samples=n_samples)
+
+with open("data/neuron_data.json", 'r') as outfile:
+    dict = json.load(outfile)
+
+data_params = dict["data_params"]
+params = dict["neuron_params"]
+delay = dict["delay"]
+
+with open("data/optimised_weights.json", 'r') as outfile:
+    weights = json.load(outfile)
+weights["wCTExt"]=1
+weights["wAbort"]=-200
 
 
-weights = { #Samples 200
-    "wCH": 0.09,
-    "wCA": 0.07,
-    "wCSigma": -0.029,
-    "wCTExt": 0.02,#0.080
-    "wCTInh": -0.001,#-0.06,
-    "wAbort": -1.0
-}
-
-n_bits_in = 100
-n_bits_out = 100
-n_ones_in = 4
-n_ones_out = 4
-n_samples = 200
-
-data_params = netw.DataParameters(n_bits_in=n_bits_in, n_bits_out=n_bits_out,
-                                  n_ones_in=n_ones_in, n_ones_out=n_ones_out,
-                                  n_samples=n_samples)
-
-mat_in = data.generate(n_bits_in, n_ones_in, n_samples)
-mat_out = data.generate(n_bits_out, n_ones_out, n_samples)
+mat_in = data.generate(data_params["n_bits_in"], data_params["n_ones_in"],
+                       data_params["n_samples"])
+mat_out = data.generate(data_params["n_bits_out"], data_params["n_ones_out"],
+                        data_params["n_samples"])
 print "Data generated!"
 scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 
@@ -83,7 +99,7 @@ for pIdx, pop in enumerate(res):
     ax.set_xlabel("Spike time [ms]")
     ax.set_ylabel("Neuron index")
     ax.set_title("Population " + str(pIdx))
-
+plt.show()
 output_times, output_indices = netw.NetworkInstance.match_static(input_times,
                                                                  input_indices,
                                                                  res[0][
@@ -95,9 +111,10 @@ analysis = netw.NetworkAnalysis(input_times=input_times,
                                 output_indices=output_indices,
                                 data_params=data_params,
                                 mat_in=mat_in, mat_out=mat_out)
+type(input_indices)
 # PyNNless sets the first inputspikes to offset if they appear before the offset
 offset = max(sim.get_time_step(), 1.0)
 I, mat_out_res, errs = pyscm.scm_analysis(analysis, res[2][
-    "spikes"], delay, offset)
+    "spikes"], offset, delay)
 
 plt.show()
