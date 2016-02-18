@@ -1,0 +1,20 @@
+{
+    "data_params": {
+        "n_ones_in": 4, 
+        "n_ones_out": 4, 
+        "n_samples": 200, 
+        "n_bits_in": 100, 
+        "n_bits_out": 100, 
+        "n_bits": 100
+    }, 
+    "neuron_params": {
+        "tau_m": 5, 
+        "e_rev_E": 0, 
+        "e_rev_I": -100, 
+        "v_thresh": -1, 
+        "tau_syn_E": 5, 
+        "v_rest": -70, 
+        "tau_syn_I": 5
+    },
+	"delay": 0.1
+}
