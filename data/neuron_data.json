@@ -9,11 +9,11 @@
     }, 
     "neuron_params": {
         "tau_m": 5, 
-        "e_rev_E": 0, 
-        "e_rev_I": -100, 
-        "v_thresh": -1, 
+        "e_rev_E": -63, 
+        "e_rev_I": -66, 
+        "v_thresh": -64, 
         "tau_syn_E": 5, 
-        "v_rest": -70, 
+        "v_rest": -65, 
         "tau_syn_I": 5
     },
 	"delay": 0.1
