@@ -16,11 +16,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import numpy as np
+import pyscm
 import pynam
+import pynam.entropy as entropy
 import pynam.network
 import pynnless as pynl
-import pynam.entropy as entropy
-import numpy as np
 
 
 class SpikeCounterModel:
@@ -49,7 +50,9 @@ class SpikeCounterModel:
                                 params=params,
                                 record=[pynl.SIG_SPIKES])
         pop_CS = pynl.Population(pop_C)
-        pop_CT = pynl.Population(count=1, _type=self._type, params=params,
+        termination_count = 1  # number of terminating neurons
+        pop_CT = pynl.Population(count=termination_count, _type=self._type,
+                                 params=params,
                                  record=[pynl.SIG_SPIKES])
         pop_source = pynl.Population(count=self.n_bits_in,
                                      _type=pynl.TYPE_SOURCE,
@@ -96,13 +99,18 @@ class SpikeCounterModel:
                                    wCSigma) +
 
             # Connections to CT
-            connections_all_to_all(self.n_bits_out, 1, iC, iCT, wCTExt) +
-            connections_all_to_all(self.n_bits_out, 1, iCS, iCT, wCTInh) +
+            connections_all_to_all(self.n_bits_out, termination_count, iC, iCT,
+                                   wCTExt) +
+            connections_all_to_all(self.n_bits_out, termination_count, iCS, iCT,
+                                   wCTInh) +
 
             # Connections from CT to all other populations
-            connections_all_to_all(1, self.n_bits_out, iCT, iC, wAbort) +
-            connections_all_to_all(1, self.n_bits_out, iCT, iCS, wAbort) +
-            connections_all_to_all(1, 1, iCT, iCT, wAbort)
+            connections_all_to_all(termination_count, self.n_bits_out, iCT, iC,
+                                   wAbort) +
+            connections_all_to_all(termination_count, self.n_bits_out, iCT, iCS,
+                                   wAbort) +
+            connections_all_to_all(termination_count, termination_count, iCT,
+                                   iCT, wAbort)
         )
 
         return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source],
@@ -132,7 +140,6 @@ def calc_scm_output_matrix(netw, terminate_times, delay, flag=min):
     # Calculation of the output matrix
     for k in xrange(N):
         time = []
-
 
         # Search for the first spike in each sample
         if (flag == min):
