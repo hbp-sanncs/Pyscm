@@ -12,11 +12,11 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import pyscm
-import pynnless.pynnless_isolated as pynl
-import pynam.data as data
-import pyscm.parameters as par
 import sys
+import pyscm
+import pyscm.parameters as par
+import pynam.data as data
+import pynnless.pynnless_isolated as pynl
 
 # check simulator
 if len(sys.argv) != 2:
@@ -48,23 +48,30 @@ weights = {
     "wCA": 0.00,
     "wCSigma": -0.00,
     "wCTExt": 0,  # 0.02,
-    "wCTInh": -0.001,
+    "wCTInh": dict["optimise_params"]["wCTInh"],
     "wAbort": 0  # -1.0
 }
-wCH_min, wCH_max = 0.01, 10
-wCA_min, wCA_max = 0.01, 10
+wCH_min, wCH_max = dict["optimise_params"]["wCH_min"], dict["optimise_params"][
+    "wCH_max"]
+wCA_min, wCA_max = dict["optimise_params"]["wCA_min"], dict["optimise_params"][
+    "wCA_max"]
 
 # Optimisation process
 weights["wCH"] = par.optimise_wCH(params, weights, delay, scm, sim,
                                   wCH_min, wCH_max, data_params["n_ones_out"])
-print weights["wCH"]
+print "Calculated 1 of 3"
 
 weights["wCA"] = par.Binam_wCA(params, weights, delay, scm, sim, wCA_min,
                                wCA_max, data_params["n_ones_out"])
-print weights["wCA"]
+print "Calculated 2 of 3"
 
-weights = par.optimise_wCA(params, weights, delay, scm, sim,
+weights["wCSigma"] = dict["optimise_params"]["wCSigma"]
+weights = par.optimise_wCA(params, weights, delay, scm, sim, wCA_max,
                            data_params["n_ones_out"])
+print "Calculated 3 of 3"
+
+weights["wCTExt"] = dict["optimise_params"]["wCTExt"]
+weights["wAbort"] = dict["optimise_params"]["wAbort"]
 
 # Write to file
 # At the moments wCText and wAbort have to be set in simulation!

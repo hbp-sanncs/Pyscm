@@ -2,19 +2,31 @@
     "data_params": {
         "n_ones_in": 4, 
         "n_ones_out": 4, 
-        "n_samples": 200, 
+        "n_samples": 150, 
         "n_bits_in": 100, 
         "n_bits_out": 100, 
         "n_bits": 100
     }, 
     "neuron_params": {
-        "tau_m": 5, 
-        "e_rev_E": -63, 
-        "e_rev_I": -66, 
-        "v_thresh": -64, 
-        "tau_syn_E": 5, 
-        "v_rest": -65, 
-        "tau_syn_I": 5
+        "tau_m": 5.0, 
+        "e_rev_E": -0.0, 
+        "e_rev_I": -100.0, 
+        "v_thresh": -1.0, 
+        "tau_syn_E": 5.0, 
+        "v_rest": -50.0, 
+		"v_reset": -50.0,
+        "tau_syn_I": 5.0
     },
-	"delay": 0.1
+	"delay": 0.1,
+	"Terminating_neurons": 10,
+	"optimise_params": {
+	"wCH_min" : 0.01,
+	"wCH_max" : 35.0,
+	"wCA_min" : 0.01,
+	"wCA_max" : 35.0,
+	"wCSigma" : -0.1,
+	"wAbort" : -10.0,
+	"wCTExt" : 1.0,
+	"wCTInh": -0.001
+	}
 }
