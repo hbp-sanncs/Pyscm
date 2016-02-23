@@ -21,6 +21,7 @@ find -depth \(\
 			-o -name "*~"\
 			-o -name ".~*"\
 			-o -name "*.pyc"\
+			-o -name "*.tmp"\
 			-o -name "spiketrain.in"\
 			-o -name "spikeyconfig.out"\
 			-o -name "logfile.txt"\
