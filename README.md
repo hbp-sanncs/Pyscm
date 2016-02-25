@@ -22,18 +22,18 @@ file is the 'optimised_weights.json' file, which contains the synaptic weights o
 the different populations.
 
 If you want to simulate with your own network data, then you can change it 
-in the 'neuron_data.json'. Since the finding of the weight is a pain, the tool
+in the 'neuron_data.json'. Since the finding of the weights is a pain, the tool
 'find_parameters.py' may help you. It gives you a first idea where your 
 parameters should be. Again you can simply type in:
 	
 	./find_paramters.py <SIMULATOR> 
 
-In Addition, the flag 'Simple_Network' in 'neuron_data.json' allows to switch
+In addition, the flag 'Simple_Network' in 'neuron_data.json' allows to switch
 between the SCM and a simpler model, which contains only one controlling 
 inhibitory neuron. 
 
 At the moment, 'spikey' is not supported. Furthermore, other systems could 
-contain a small amount of bugs which reduces the amount of usability of this
+contain a small amount of bugs which reduces the usability of this
 model. Nevertheless, it works on 'Nest'.
 
 ## Simulators
