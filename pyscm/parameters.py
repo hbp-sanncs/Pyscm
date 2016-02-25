@@ -92,7 +92,6 @@ def Binam_wCA(params, weights, delay, scm, sim, min, max, n_ones_out):
 
 # Search for the optimal wCA with inhibitory part
 def optimise_wCA(params, weights, delay, scm, sim, wCA_max, n_ones_out):
-    # For now the strategy is to set wCSigma to a value and make wCA bigger step by step
     wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
                                 weights["wCH"], wCA_max, n_ones_out, 2,
                                 "wCA")
@@ -118,3 +117,33 @@ def optimise_wCSigma(params, weights, delay, scm, sim, wCSigma_min, n_ones_out):
     weights["wCSigma"] = wCSigma_max
     return weights
 
+
+def bisect_wCT(params, weights, delay, scm, sim, min, max, min_spike_count):
+    weights["wCTExt"] = (max + min) / 2.0
+    net, _, _, _ = scm.build(params=params, weights=weights,
+                             delay=delay)
+    res = sim.run(net, duration=125)
+    print res[2]["spikes"]
+    print res[2]["spikes"][0]
+    if (len(res[2]["spikes"][0]) == 0):
+        return weights["wCTExt"], max
+    try:
+        max_spikes = np.max([len(i) for i in res[0]["spikes"]])
+    except:
+        return min, weights["wCT"]
+    print(max_spikes)
+    if (max_spikes > min_spike_count):
+        return -1, 0
+    return min, weights["wCTExt"]
+
+
+def optimise_wCT(params, weights, delay, scm, sim, wCT_min, wCT_max):
+    weights["wAbort"]=-1.5*weights["wCA"]
+    while True:
+        wCT_min, wCT_max = bisect_wCT(params, weights, delay, scm, sim,
+                                      wCT_min, wCT_max, 5)
+        if (np.abs(wCT_min - wCT_max) < 0.001):
+            break
+        if(wCT_min<0):
+            break
+    return weights

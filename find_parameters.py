@@ -53,28 +53,23 @@ weights = {
 }
 wCH_min, wCH_max = dict["optimise_params"]["wCH_min"], dict["optimise_params"][
     "wCH_max"]
-wCA_min, wCA_max = dict["optimise_params"]["wCA_min"], dict["optimise_params"][
-    "wCA_max"]
+
 
 # Optimisation process
 weights["wCH"] = par.optimise_wCH(params, weights, delay, scm, sim,
                                   wCH_min, wCH_max, data_params["n_ones_out"])
 print "Calculated 1 of 3"
 
-weights["wCA"] = par.Binam_wCA(params, weights, delay, scm, sim, wCA_min,
-                               wCA_max, data_params["n_ones_out"])
-print "Calculated 2 of 3"
 
-weights["wCSigma"] = dict["optimise_params"]["wCSigma"]
-weights = par.optimise_wCA(params, weights, delay, scm, sim, wCA_max,
-                           data_params["n_ones_out"])
+weights["wCA"] = 2.0 * weights["wCH"]
+weights = par.optimise_wCSigma(params, weights, delay, scm, sim, -wCH_max,
+                               data_params["n_ones_out"])
+
+print "Calculated 2 of 3"
+weights = par.optimise_wCT(params, weights, delay, scm, sim, 0.001, 10)
 print "Calculated 3 of 3"
 
-weights["wCTExt"] = dict["optimise_params"]["wCTExt"]
-weights["wAbort"] = dict["optimise_params"]["wAbort"]
 
 # Write to file
-# At the moments wCText and wAbort have to be set in simulation!
-# + wCSigma is set (TODO)
 with open("data/optimised_weights.json", 'w') as outfile:
     json.dump(weights, outfile, indent=4)

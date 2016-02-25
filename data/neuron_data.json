@@ -2,7 +2,7 @@
     "data_params": {
         "n_ones_in": 4, 
         "n_ones_out": 4, 
-        "n_samples": 150, 
+        "n_samples": 450, 
         "n_bits_in": 100, 
         "n_bits_out": 100, 
         "n_bits": 100
@@ -22,11 +22,6 @@
 	"optimise_params": {
 	"wCH_min" : 0.01,
 	"wCH_max" : 35.0,
-	"wCA_min" : 0.01,
-	"wCA_max" : 35.0,
-	"wCSigma" : -0.1,
-	"wAbort" : -10.0,
-	"wCTExt" : 1.0,
 	"wCTInh": -0.001
 	}
 }
