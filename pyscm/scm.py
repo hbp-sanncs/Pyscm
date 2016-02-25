@@ -192,7 +192,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     I = entropy.entropy_hetero(errs, n, netw["data_params"]["n_ones_out"])
 
     # Get the spike times of the source population
-    tem, _, _ = pynam.network.NetworkInstance.flaten(netw["input_times"],
+    tem, _, _ = pynam.network.NetworkInstance.flatten(netw["input_times"],
                                                      netw["input_indices"])
     start_times = np.unique(tem)
     # PyNNless sets the first inputspikes to offset if they appear before the offset
