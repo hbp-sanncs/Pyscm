@@ -12,136 +12,211 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+import pynnless.pynnless_isolated as pynl
+import pyscm
+import pynam.data as data
+import json
 
 
-# bisection for wCH
-def bisect_wCH(params, weights, delay, scm, sim, min, max, n_ones_out):
-    weights["wCH"] = (max + min) / 2.0
-    net, _, _, _ = scm.build(params=params, weights=weights,
-                             delay=delay)
-    res = sim.run(net, duration=105)
-    # n counts the number of ones in output to terminate early if system is to active
-    n = 0
-    for i in res[0]["spikes"]:
-        if i != []:
-            n += 1
-    if (n >= n_ones_out):
-        return min, weights["wCH"]
-    return weights["wCH"], max
+class WeightOptimisation:
+    '''
+    This class contains all functions to optimise the weights in the SCM and
+    depends on the parameters given in the initialiser.
+    It simulates the network and evaluates with the first sample of a
+    randomly set BiNAM. For details look into the PyNAM.
+    The standard evaluation procedure is to set wCH first, double the value for
+    wCA and then optimise for wCSigma. wAbort is set in dependence of wCA.
 
+    TLDR: do_standard_stuff() should work if you gave all the params
+    '''
+    def __init__(self, data_params, params, delay, optimise_params, simulator):
+        '''
+        Calculation of the BiNAM and set up of the simulator
+        :param data_params: BiNAM data parameters
+        :param params: neuron params
+        :param delay: delay in the synapses
+        :param optimise_params: needs wCH_min, wCH_max, wCTInh = -0.001
+        :param simulator: nest, nmmmc1, ...
+        '''
+        # Generate BiNAM
+        self.mat_in = data.generate(data_params["n_bits_in"],
+                                    data_params["n_ones_in"],
+                                    data_params["n_samples"])
+        self.mat_out = data.generate(data_params["n_bits_out"],
+                                     data_params["n_ones_out"],
+                                     data_params["n_samples"])
+        print "Data generated!"
 
-# uses the bisection to find minimal wCH
-def optimise_wCH(params, weights, delay, scm, sim, min, max, n_ones_out):
-    wCH_min, wCH_max = bisect_wCH(params, weights, delay, scm, sim, min,
-                                  max, n_ones_out)
-    N = 0
-    while True:
-        wCH_min, wCH_max = bisect_wCH(params, weights, delay, scm, sim,
-                                      wCH_min, wCH_max, n_ones_out)
-        N += 1
-        if (wCH_max - wCH_min < 0.001):
-            break
-    return wCH_max
+        # set up simulator
+        self.scm = pyscm.SpikeCounterModel(self.mat_in, self.mat_out)
+        self.sim = pynl.PyNNLessIsolated(simulator)
 
+        # Initial values
+        self.weights = {
+            "wCH": 0.00,
+            "wCA": 0.00,
+            "wCSigma": -0.00,
+            "wCTExt": 0,  # 0.02,
+            "wCTInh": optimise_params["wCTInh"],
+            "wAbort": 0  # -1.0
+        }
+        self.wCH_min, self.wCH_max = optimise_params["wCH_min"], \
+                                     optimise_params[
+                                         "wCH_max"]
+        self.params = params
+        self.n_ones_out = data_params["n_ones_out"]
+        self.delay = delay
+        print "Optimisation set up done!"
 
-# Bisection to find a minimal wCA / maximal wCsigma which keeps the system active
-# with given weights
-def find_min(params, weights, delay, scm, sim, min, max, n_ones_out,
-             accuracy, str):
-    weights[str] = (max + min) / 2.0
-    net, _, _, _ = scm.build(params=params, weights=weights,
-                             delay=delay)
-    res = sim.run(net, duration=125)
-
-    # Search for the last spike. If there was no spike np.max throws exception
-    try:
-        time = np.max(np.max(res[0]["spikes"]))
-    except:
-        return weights[str], max
-    if time < 120:
-        return weights[str], max
-
-    # Search in the interval [time-2*delay, time]
-    time -= 2 * delay
-    # Count for number of ones in interval
-    n = 0
-    for i in res[0]["spikes"]:
-        for j in i:
-            if j >= time:
+    # bisection for wCH
+    def bisect_wCH(self, min, max):
+        self.weights["wCH"] = (max + min) / 2.0
+        net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
+                                      delay=self.delay)
+        res = self.sim.run(net, duration=105)
+        # n counts the number of ones in output to terminate early if system is to active
+        n = 0
+        for i in res[0]["spikes"]:
+            if i != []:
                 n += 1
-                # If to active...
-                if (n >= accuracy * n_ones_out):
-                    return min, weights[str]
-    # Either not active enough or good
-    return weights[str], max
+        if (n >= self.n_ones_out):
+            return min, self.weights["wCH"]
+        return self.weights["wCH"], max
 
+    # uses the bisection to find minimal wCH
+    def optimise_wCH(self):
+        wCH_min, wCH_max = self.bisect_wCH(self.wCH_min, self.wCH_max)
+        N = 0
+        while True:
+            wCH_min, wCH_max = self.bisect_wCH(wCH_min, wCH_max)
+            N += 1
+            if (wCH_max - wCH_min < 0.001):
+                break
+        self.weights["wCH"] = wCH_max
+        print "wCH ready!"
+        return self
 
-# Search for the optimal wCA for the non-inhibitory part of the SCM
-def Binam_wCA(params, weights, delay, scm, sim, min, max, n_ones_out):
-    N = 1
-    wCA_min, wCA_max = find_min(params, weights, delay, scm, sim, min,
-                                max, n_ones_out, 3, "wCA")
-    while True:
-        wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
-                                    wCA_min, wCA_max, n_ones_out, 3, "wCA")
-        N += 1
-        if (wCA_max - wCA_min < 0.001):
-            break
-    return wCA_max
+    # Bisection to find a minimal wCA / maximal wCsigma which keeps the system active
+    def find_min(self, min, max, accuracy, str):
+        self.weights[str] = (max + min) / 2.0
+        net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
+                                      delay=self.delay)
+        res = self.sim.run(net, duration=125)
 
+        # Search for the last spike. If there was no spike np.max throws exception
+        try:
+            time = np.max(np.max(res[0]["spikes"]))
+        except:
+            return self.weights[str], max
+        if time < 120:
+            return self.weights[str], max
 
-# Search for the optimal wCA with inhibitory part
-def optimise_wCA(params, weights, delay, scm, sim, wCA_max, n_ones_out):
-    wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
-                                weights["wCH"], wCA_max, n_ones_out, 2,
-                                "wCA")
-    N = 0
-    while True:
-        wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
-                                    wCA_min, wCA_max, n_ones_out, 2, "wCA")
-        N += 1
-        if (wCA_max - wCA_min < 0.001):
-            break
-    weights["wCA"] = wCA_max
-    return weights
+        # Search in the interval [time-2*delay, time]
+        time -= 2 * self.delay
+        # Count for number of ones in interval
+        n = 0
+        for i in res[0]["spikes"]:
+            for j in i:
+                if j >= time:
+                    n += 1
+                    # If to active...
+                    if (n >= accuracy * self.n_ones_out):
+                        return min, self.weights[str]
+        # Either not active enough or good
+        return self.weights[str], max
 
+    # Set wCSigma if you want to optimise wCA
+    def set_wCSigma(self, weight=-0.01):
+        self.weights["wCSigma"] = weight
 
-def optimise_wCSigma(params, weights, delay, scm, sim, wCSigma_min, n_ones_out):
-    wCSigma_max = -0.001
-    while True:
-        wCSigma_min, wCSigma_max = find_min(params, weights, delay, scm, sim,
-                                            wCSigma_min, wCSigma_max,
-                                            n_ones_out, 1, "wCSigma")
-        if (np.abs(wCSigma_min - wCSigma_max) < 0.001):
-            break
-    weights["wCSigma"] = wCSigma_max
-    return weights
+    # Search for the optimal wCA, wCSigma should be set before
+    def optimise_wCA(self, min, max):
+        if (self.weights["wCSigma"] == 0):
+            raise Exception("Set wCSigma before optimising wCA!")
+        wCA_min, wCA_max = self.find_min(min, max, 2, "wCA")
+        while True:
+            wCA_min, wCA_max = self.find_min(wCA_min, wCA_max, 2, "wCA")
+            if (wCA_max - wCA_min < 0.001):
+                break
+        self.weights["wCA"] = wCA_max
+        print "wCA ready!"
+        return self
 
+    # Set a standard wCA instead of searching for it, seems to work pretty well
+    def set_wCA(self, weight=None):
+        if (weight == None):
+            self.weights["wCA"] = 2.0 * self.weights["wCH"]
+        else:
+            self.weights["wCA"] = weight
+        return self
 
-def bisect_wCT(params, weights, delay, scm, sim, min, max, min_spike_count):
-    weights["wCTExt"] = (max + min) / 2.0
-    net, _, _, _ = scm.build(params=params, weights=weights,
-                             delay=delay)
-    res = sim.run(net, duration=125)
-    if (len(res[2]["spikes"][0]) == 0):
-        return weights["wCTExt"], max
-    try:
-        max_spikes = np.max([len(i) for i in res[0]["spikes"]])
-    except:
-        return min, weights["wCT"]
-    print(max_spikes)
-    if (max_spikes > min_spike_count):
-        return -1, 0
-    return min, weights["wCTExt"]
+    # Search for a optimal wCSigma, wCA should be set beforehand
+    def optimise_wCSigma(self, wCSigma_min=None, wCSigma_max=-0.001):
+        if (self.weights["wCA"] == 0):
+            raise Exception("Set wCa before optimising wCSigma!")
+        if (wCSigma_min == None):
+            wCSigma_min = - self.weights["wCA"]
+        while True:
+            wCSigma_min, wCSigma_max = self.find_min(wCSigma_min, wCSigma_max,
+                                                     1, "wCSigma")
+            if (np.abs(wCSigma_min - wCSigma_max) < 0.001):
+                break
+        self.weights["wCSigma"] = wCSigma_max
+        print "wCSigma ready!"
+        return self
 
+    # Bisection for wCT, differs a bit from the others.
+    # It assures that the system spikes at least the min_spike_count
+    # + that the termination neuron spikes at least one time
+    def bisect_wCT(self, min, max, min_spike_count=5):
+        self.weights["wCTExt"] = (max + min) / 2.0
+        net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
+                                      delay=self.delay)
+        res = self.sim.run(net, duration=125)
 
-def optimise_wCT(params, weights, delay, scm, sim, wCT_min, wCT_max):
-    weights["wAbort"]=-1.5*weights["wCA"]
-    while True:
-        wCT_min, wCT_max = bisect_wCT(params, weights, delay, scm, sim,
-                                      wCT_min, wCT_max, 5)
-        if (np.abs(wCT_min - wCT_max) < 0.001):
-            break
-        if(wCT_min<0):
-            break
-    return weights
+        # If termination neuron does not spike, increase weight
+        if (len(res[2]["spikes"][0]) == 0):
+            return self.weights["wCTExt"], max
+        # Estimate the number of spikes of an active neuron
+        try:
+            max_spikes = np.max([len(i) for i in res[0]["spikes"]])
+        except:
+            return min, self.weights["wCT"]
+        # If the number of counts is achieved, set to -1 to stop the process
+        if (max_spikes > min_spike_count):
+            return -1, 0
+        return min, self.weights["wCTExt"]
+
+    # Set wAbort to standard value
+    def set_wAbort(self, weight=None):
+        if (weight == None):
+            self.weights["wAbort"] = -1.5 * self.weights["wCA"]
+        else:
+            self.weights["wAbort"] = weight
+        return self
+
+    # Optimising wCT with the bisect_wCT
+    def optimise_wCT(self, wCT_min=0.001, wCT_max=None, minimal_spike_count=5):
+        if (self.weights["wAbort"] == 0):
+            raise Exception(
+                "It makes no sense to optimise wCT before setting wAbort!")
+        if (wCT_max == None):
+            wCT_max = self.weights["wCA"]
+        while True:
+            wCT_min, wCT_max = self.bisect_wCT(wCT_min, wCT_max,
+                                               minimal_spike_count)
+            if (np.abs(wCT_min - wCT_max) < 0.001):
+                break
+            if (wCT_min < 0):
+                break
+        print "wCT ready!"
+        return self
+
+    # Make the standard optimisation
+    def do_standard_stuff(self):
+        return self.optimise_wCH().set_wCA().optimise_wCSigma().set_wAbort().optimise_wCT()
+
+    # Write all weights to a json file, which can be read in from the scm
+    def write_to_file(self, file="data/optimised_weights.json"):
+        with open(file, 'w') as outfile:
+            json.dump(self.weights, outfile, indent=4)
