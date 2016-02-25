@@ -18,7 +18,7 @@
         "tau_syn_I": 5.0
     },
 	"delay": 0.1,
-	"Terminating_neurons": 10,
+	"terminating_neurons": 10,
 	"optimise_params": {
 	"wCH_min" : 0.01,
 	"wCH_max" : 35.0,

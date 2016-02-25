@@ -29,7 +29,9 @@ class WeightOptimisation:
 
     TLDR: do_standard_stuff() should work if you gave all the params
     '''
-    def __init__(self, data_params, params, delay, optimise_params, simulator):
+
+    def __init__(self, data_params, params, delay, optimise_params, simulator,
+                 terminating_neurons=1):
         '''
         Calculation of the BiNAM and set up of the simulator
         :param data_params: BiNAM data parameters
@@ -37,6 +39,7 @@ class WeightOptimisation:
         :param delay: delay in the synapses
         :param optimise_params: needs wCH_min, wCH_max, wCTInh = -0.001
         :param simulator: nest, nmmmc1, ...
+        :param terminating_neurons: Number of terminating neurons
         '''
         # Generate BiNAM
         self.mat_in = data.generate(data_params["n_bits_in"],
@@ -66,13 +69,15 @@ class WeightOptimisation:
         self.params = params
         self.n_ones_out = data_params["n_ones_out"]
         self.delay = delay
+        self.terminating_neurons = terminating_neurons
         print "Optimisation set up done!"
 
     # bisection for wCH
     def bisect_wCH(self, min, max):
         self.weights["wCH"] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
-                                      delay=self.delay)
+                                      delay=self.delay,
+                                      terminating_neurons=self.terminating_neurons)
         res = self.sim.run(net, duration=105)
         # n counts the number of ones in output to terminate early if system is to active
         n = 0
@@ -100,7 +105,8 @@ class WeightOptimisation:
     def find_min(self, min, max, accuracy, str):
         self.weights[str] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
-                                      delay=self.delay)
+                                      delay=self.delay,
+                                      terminating_neurons=self.terminating_neurons)
         res = self.sim.run(net, duration=125)
 
         # Search for the last spike. If there was no spike np.max throws exception
@@ -171,7 +177,8 @@ class WeightOptimisation:
     def bisect_wCT(self, min, max, min_spike_count=5):
         self.weights["wCTExt"] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
-                                      delay=self.delay)
+                                      delay=self.delay,
+                                      terminating_neurons=self.terminating_neurons)
         res = self.sim.run(net, duration=125)
 
         # If termination neuron does not spike, increase weight
@@ -190,7 +197,8 @@ class WeightOptimisation:
     # Set wAbort to standard value
     def set_wAbort(self, weight=None):
         if (weight == None):
-            self.weights["wAbort"] = -1.5 * self.weights["wCA"]
+            self.weights["wAbort"] = -1.5 * self.weights["wCA"] / float(
+                self.terminating_neurons)
         else:
             self.weights["wAbort"] = weight
         return self

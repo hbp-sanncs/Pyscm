@@ -37,7 +37,16 @@ class SpikeCounterModel:
         self.mat_CH = pynam.BiNAM().train_matrix(mat_in, mat_out)
         self.mat_CA = pynam.BiNAM().train_matrix(mat_out, mat_out)
 
-    def build(self, weights, params={}, input_params={}, delay=0.1):
+    def build(self, weights, params={}, input_params={}, delay=0.1,terminating_neurons=1):
+        '''
+        Builds the network of the SCM
+        :param weights: dict of different weights in the SCM: wCH,wCA,wCSigma,
+                wCTInh, wCTExt, wAbort
+        :param params: neuron params
+        :param input_params: pynam.network.InputParameters
+        :param terminating_neurons: Number of terminating neurons, Workaround for
+                some platforms for higher weights to really terminate
+        '''
         net = pynl.Network()
 
         # Create the input spike trains
@@ -50,8 +59,7 @@ class SpikeCounterModel:
                                 params=params,
                                 record=[pynl.SIG_SPIKES])
         pop_CS = pynl.Population(pop_C)
-        termination_count = 1  # number of terminating neurons
-        pop_CT = pynl.Population(count=termination_count, _type=self._type,
+        pop_CT = pynl.Population(count=terminating_neurons, _type=self._type,
                                  params=params,
                                  record=[pynl.SIG_SPIKES])
         pop_source = pynl.Population(count=self.n_bits_in,
@@ -99,17 +107,17 @@ class SpikeCounterModel:
                                    wCSigma) +
 
             # Connections to CT
-            connections_all_to_all(self.n_bits_out, termination_count, iC, iCT,
+            connections_all_to_all(self.n_bits_out, terminating_neurons, iC, iCT,
                                    wCTExt) +
-            connections_all_to_all(self.n_bits_out, termination_count, iCS, iCT,
+            connections_all_to_all(self.n_bits_out, terminating_neurons, iCS, iCT,
                                    wCTInh) +
 
             # Connections from CT to all other populations
-            connections_all_to_all(termination_count, self.n_bits_out, iCT, iC,
+            connections_all_to_all(terminating_neurons, self.n_bits_out, iCT, iC,
                                    wAbort) +
-            connections_all_to_all(termination_count, self.n_bits_out, iCT, iCS,
+            connections_all_to_all(terminating_neurons, self.n_bits_out, iCT, iCS,
                                    wAbort) +
-            connections_all_to_all(termination_count, termination_count, iCT,
+            connections_all_to_all(terminating_neurons, terminating_neurons, iCT,
                                    iCT, wAbort)
         )
 
