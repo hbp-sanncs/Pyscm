@@ -37,7 +37,8 @@ class SpikeCounterModel:
         self.mat_CH = pynam.BiNAM().train_matrix(mat_in, mat_out)
         self.mat_CA = pynam.BiNAM().train_matrix(mat_out, mat_out)
 
-    def build(self, weights, params={}, input_params={}, delay=0.1,terminating_neurons=1):
+    def build(self, weights, params={}, input_params={}, delay=0.1,
+              terminating_neurons=1, flag=False):
         '''
         Builds the network of the SCM
         :param weights: dict of different weights in the SCM: wCH,wCA,wCSigma,
@@ -46,6 +47,8 @@ class SpikeCounterModel:
         :param input_params: pynam.network.InputParameters
         :param terminating_neurons: Number of terminating neurons, Workaround for
                 some platforms for higher weights to really terminate
+        :param flag: change between SCM (False) and a single neuron in the
+                CS(igma) population
         '''
         net = pynl.Network()
 
@@ -56,17 +59,18 @@ class SpikeCounterModel:
 
         # Create the individual cell assemblies
         pop_C = pynl.Population(count=self.n_bits_out, _type=self._type,
-                                params=params,
-                                record=[pynl.SIG_SPIKES])
-        pop_CS = pynl.Population(pop_C)
+                                params=params, record=[pynl.SIG_SPIKES])
+        if (flag):
+            pop_CS = pynl.Population(count=self.n_bits_out, _type=self._type,
+                                     params=params, record=[pynl.SIG_SPIKES])
+        else:
+            pop_CS = pynl.Population(pop_C)
         pop_CT = pynl.Population(count=terminating_neurons, _type=self._type,
-                                 params=params,
-                                 record=[pynl.SIG_SPIKES])
+                                 params=params, record=[pynl.SIG_SPIKES])
         pop_source = pynl.Population(count=self.n_bits_in,
-                                     _type=pynl.TYPE_SOURCE,
-                                     params=map(
-                                         lambda train: {"spike_times": train},
-                                         trains), record=[pynl.SIG_SPIKES])
+                                     _type=pynl.TYPE_SOURCE, params=map(
+                lambda train: {"spike_times": train}, trains),
+                                     record=[pynl.SIG_SPIKES])
 
         # Create the connections
         def connections_from_matrix(mat, pSrc, pTar, w):
@@ -94,32 +98,58 @@ class SpikeCounterModel:
         iCS = 1
         iCT = 2
         iSource = 3
-        connections = (
-            connections_from_matrix(self.mat_CH, iSource, iC, wCH) +
-            connections_from_matrix(self.mat_CH, iSource, iCS, wCH) +
-            connections_from_matrix(self.mat_CA, iC, iCS, wCA) +
-            connections_from_matrix(self.mat_CA, iC, iC, wCA) +
+        if (flag):
+            connections = (
+                connections_from_matrix(self.mat_CH, iSource, iC, wCH) +
+                connections_from_matrix(self.mat_CA, iC, iC, wCA) +
+                connections_all_to_all(self.n_bits_in, 1, iSource, iCS, wCH) +
+                connections_all_to_all(self.n_bits_out, 1, iC, iCS, wCA) +
 
-            # Sigma connections
-            connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS, iCS,
-                                   wCSigma) +
-            connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS, iC,
-                                   wCSigma) +
+                # Sigma connections
+                connections_all_to_all(1, 1, iCS, iCS, wCSigma) +
+                connections_all_to_all(1, self.n_bits_out, iCS, iC, wCSigma) +
 
-            # Connections to CT
-            connections_all_to_all(self.n_bits_out, terminating_neurons, iC, iCT,
-                                   wCTExt) +
-            connections_all_to_all(self.n_bits_out, terminating_neurons, iCS, iCT,
-                                   wCTInh) +
+                # Connections to CT
+                connections_all_to_all(self.n_bits_out, terminating_neurons, iC,
+                                       iCT, wCTExt) +
+                connections_all_to_all(1, terminating_neurons, iCS, iCT,
+                                       wCTInh) +
 
-            # Connections from CT to all other populations
-            connections_all_to_all(terminating_neurons, self.n_bits_out, iCT, iC,
-                                   wAbort) +
-            connections_all_to_all(terminating_neurons, self.n_bits_out, iCT, iCS,
-                                   wAbort) +
-            connections_all_to_all(terminating_neurons, terminating_neurons, iCT,
-                                   iCT, wAbort)
-        )
+                # Connections from CT to all other populations
+                connections_all_to_all(terminating_neurons, self.n_bits_out,
+                                       iCT, iC, wAbort) +
+                connections_all_to_all(terminating_neurons, 1, iCT, iCS,
+                                       wAbort) +
+                connections_all_to_all(terminating_neurons, terminating_neurons,
+                                       iCT, iCT, wAbort)
+            )
+        else:
+            connections = (
+                connections_from_matrix(self.mat_CH, iSource, iC, wCH) +
+                connections_from_matrix(self.mat_CH, iSource, iCS, wCH) +
+                connections_from_matrix(self.mat_CA, iC, iCS, wCA) +
+                connections_from_matrix(self.mat_CA, iC, iC, wCA) +
+
+                # Sigma connections
+                connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS,
+                                       iCS, wCSigma) +
+                connections_all_to_all(self.n_bits_out, self.n_bits_out, iCS,
+                                       iC, wCSigma) +
+
+                # Connections to CT
+                connections_all_to_all(self.n_bits_out, terminating_neurons, iC,
+                                       iCT, wCTExt) +
+                connections_all_to_all(self.n_bits_out, terminating_neurons,
+                                       iCS, iCT, wCTInh) +
+
+                # Connections from CT to all other populations
+                connections_all_to_all(terminating_neurons, self.n_bits_out,
+                                       iCT, iC, wAbort) +
+                connections_all_to_all(terminating_neurons, self.n_bits_out,
+                                       iCT, iCS, wAbort) +
+                connections_all_to_all(terminating_neurons, terminating_neurons,
+                                       iCT, iCT, wAbort)
+            )
 
         return pynl.Network(populations=[pop_C, pop_CS, pop_CT, pop_source],
                             connections=connections), input_indices, input_split, trains
@@ -186,7 +216,7 @@ def calc_scm_output_matrix(netw, terminate_times, delay, flag=min):
     return res
 
 
-def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
+def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
     """
     Anaylsis of the scm and compare to normal PyNAM (first spikes after input spike)
     :param netw: Should be of NetworkAnalysis type
@@ -201,7 +231,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
 
     # Get the spike times of the source population
     tem, _, _ = pynam.network.NetworkInstance.flatten(netw["input_times"],
-                                                     netw["input_indices"])
+                                                      netw["input_indices"])
     start_times = np.unique(tem)
     # PyNNless sets the first inputspikes to offset if they appear before the offset
     for i in xrange(len(start_times)):
@@ -218,7 +248,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     I_start = entropy.entropy_hetero(errs_start, n,
                                      netw["data_params"]["n_ones_out"])
 
-    # Calculate non-spiking information for REFerence
+    # Calculate non-spiking information for Reference
     I_ref, mat_ref, errs_ref = netw.calculate_max_storage_capacity()
     # Noramlized information values
     I_norm = 0.0 if I_ref == 0.0 else I / float(I_ref)
@@ -230,7 +260,10 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1):
     fp_start = sum(map(lambda x: x["fp"], errs_start))
     fn_start = sum(map(lambda x: x["fn"], errs_start))
 
-    print "\t\t\t\t\t\tBiNAM \t\tSCM"
+    if (flag):
+        print "\t\t\t\t\t\tBiNAM \t\tSimple_Net"
+    else:
+        print "\t\t\t\t\t\tBiNAM \t\tSCM"
     print "Information:\t\t\t", format(I_start, '.2f'), "\t", format(I, '.2f')
     print "Normalized information:\t", format(I_norm_start,
                                               '.2f'), "\t\t", format(I_norm,

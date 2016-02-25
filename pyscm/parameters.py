@@ -31,7 +31,7 @@ class WeightOptimisation:
     '''
 
     def __init__(self, data_params, params, delay, optimise_params, simulator,
-                 terminating_neurons=1):
+                 terminating_neurons=1, flag=False):
         '''
         Calculation of the BiNAM and set up of the simulator
         :param data_params: BiNAM data parameters
@@ -40,6 +40,8 @@ class WeightOptimisation:
         :param optimise_params: needs wCH_min, wCH_max, wCTInh = -0.001
         :param simulator: nest, nmmmc1, ...
         :param terminating_neurons: Number of terminating neurons
+        :param flag: change between SCM (False) and a single neuron in the
+                CS(igma) population
         '''
         # Generate BiNAM
         self.mat_in = data.generate(data_params["n_bits_in"],
@@ -70,6 +72,7 @@ class WeightOptimisation:
         self.n_ones_out = data_params["n_ones_out"]
         self.delay = delay
         self.terminating_neurons = terminating_neurons
+        self.flag = flag
         print "Optimisation set up done!"
 
     # bisection for wCH
@@ -77,7 +80,8 @@ class WeightOptimisation:
         self.weights["wCH"] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
                                       delay=self.delay,
-                                      terminating_neurons=self.terminating_neurons)
+                                      terminating_neurons=self.terminating_neurons,
+                                      flag=self.flag)
         res = self.sim.run(net, duration=105)
         # n counts the number of ones in output to terminate early if system is to active
         n = 0
@@ -106,7 +110,8 @@ class WeightOptimisation:
         self.weights[str] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
                                       delay=self.delay,
-                                      terminating_neurons=self.terminating_neurons)
+                                      terminating_neurons=self.terminating_neurons,
+                                      flag=self.flag)
         res = self.sim.run(net, duration=125)
 
         # Search for the last spike. If there was no spike np.max throws exception
@@ -155,7 +160,7 @@ class WeightOptimisation:
         else:
             self.weights["wCA"] = weight
         return self
-
+    # TODO: Optimisations for the simple model
     # Search for a optimal wCSigma, wCA should be set beforehand
     def optimise_wCSigma(self, wCSigma_min=None, wCSigma_max=-0.001):
         if (self.weights["wCA"] == 0):
@@ -178,7 +183,8 @@ class WeightOptimisation:
         self.weights["wCTExt"] = (max + min) / 2.0
         net, _, _, _ = self.scm.build(params=self.params, weights=self.weights,
                                       delay=self.delay,
-                                      terminating_neurons=self.terminating_neurons)
+                                      terminating_neurons=self.terminating_neurons,
+                                      flag=self.flag)
         res = self.sim.run(net, duration=125)
 
         # If termination neuron does not spike, increase weight

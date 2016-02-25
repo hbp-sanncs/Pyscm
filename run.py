@@ -39,6 +39,7 @@ data_params = dict["data_params"]
 params = dict["neuron_params"]
 delay = dict["delay"]
 terminating_neurons = dict["terminating_neurons"]
+flag=dict["Simple_Network"]
 
 # Read in neuron weights, some still have to be set manually
 with open("data/optimised_weights.json", 'r') as outfile:
@@ -57,7 +58,7 @@ scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 sim = pynl.PyNNLess(sys.argv[1])
 net, input_indices, _, input_times = scm.build(params=params, weights=weights,
                                                delay=delay,
-                                               terminating_neurons=terminating_neurons)
+                                               terminating_neurons=terminating_neurons,flag=flag)
 print "Preparations done"
 
 # Simulation
