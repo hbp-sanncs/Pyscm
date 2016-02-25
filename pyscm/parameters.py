@@ -44,10 +44,11 @@ def optimise_wCH(params, weights, delay, scm, sim, min, max, n_ones_out):
     return wCH_max
 
 
-# Bisection to find a minimal wCA which keeps the system active with given weights
-def find_min_wCA(params, weights, delay, scm, sim, min, max, n_ones_out,
-                 accuracy):
-    weights["wCA"] = (max + min) / 2.0
+# Bisection to find a minimal wCA / maximal wCsigma which keeps the system active
+# with given weights
+def find_min(params, weights, delay, scm, sim, min, max, n_ones_out,
+             accuracy, str):
+    weights[str] = (max + min) / 2.0
     net, _, _, _ = scm.build(params=params, weights=weights,
                              delay=delay)
     res = sim.run(net, duration=125)
@@ -56,9 +57,9 @@ def find_min_wCA(params, weights, delay, scm, sim, min, max, n_ones_out,
     try:
         time = np.max(np.max(res[0]["spikes"]))
     except:
-        return weights["wCA"], max
+        return weights[str], max
     if time < 120:
-        return weights["wCA"], max
+        return weights[str], max
 
     # Search in the interval [time-2*delay, time]
     time -= 2 * delay
@@ -70,19 +71,19 @@ def find_min_wCA(params, weights, delay, scm, sim, min, max, n_ones_out,
                 n += 1
                 # If to active...
                 if (n >= accuracy * n_ones_out):
-                    return min, weights["wCA"]
+                    return min, weights[str]
     # Either not active enough or good
-    return weights["wCA"], max
+    return weights[str], max
 
 
 # Search for the optimal wCA for the non-inhibitory part of the SCM
 def Binam_wCA(params, weights, delay, scm, sim, min, max, n_ones_out):
     N = 1
-    wCA_min, wCA_max = find_min_wCA(params, weights, delay, scm, sim, min,
-                                    max, n_ones_out, 3)
+    wCA_min, wCA_max = find_min(params, weights, delay, scm, sim, min,
+                                max, n_ones_out, 3, "wCA")
     while True:
-        wCA_min, wCA_max = find_min_wCA(params, weights, delay, scm, sim,
-                                        wCA_min, wCA_max, n_ones_out, 3)
+        wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
+                                    wCA_min, wCA_max, n_ones_out, 3, "wCA")
         N += 1
         if (wCA_max - wCA_min < 0.001):
             break
@@ -92,14 +93,28 @@ def Binam_wCA(params, weights, delay, scm, sim, min, max, n_ones_out):
 # Search for the optimal wCA with inhibitory part
 def optimise_wCA(params, weights, delay, scm, sim, wCA_max, n_ones_out):
     # For now the strategy is to set wCSigma to a value and make wCA bigger step by step
-    wCA_min, wCA_max = find_min_wCA(params, weights, delay, scm, sim,
-                                    weights["wCA"], wCA_max, n_ones_out, 2)
+    wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
+                                weights["wCH"], wCA_max, n_ones_out, 2,
+                                "wCA")
     N = 0
     while True:
-        wCA_min, wCA_max = find_min_wCA(params, weights, delay, scm, sim,
-                                        wCA_min, wCA_max, n_ones_out, 2)
+        wCA_min, wCA_max = find_min(params, weights, delay, scm, sim,
+                                    wCA_min, wCA_max, n_ones_out, 2, "wCA")
         N += 1
         if (wCA_max - wCA_min < 0.001):
             break
     weights["wCA"] = wCA_max
     return weights
+
+
+def optimise_wCSigma(params, weights, delay, scm, sim, wCSigma_min, n_ones_out):
+    wCSigma_max = -0.001
+    while True:
+        wCSigma_min, wCSigma_max = find_min(params, weights, delay, scm, sim,
+                                            wCSigma_min, wCSigma_max,
+                                            n_ones_out, 1, "wCSigma")
+        if (np.abs(wCSigma_min - wCSigma_max) < 0.001):
+            break
+    weights["wCSigma"] = wCSigma_max
+    return weights
+
