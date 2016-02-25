@@ -123,8 +123,6 @@ def bisect_wCT(params, weights, delay, scm, sim, min, max, min_spike_count):
     net, _, _, _ = scm.build(params=params, weights=weights,
                              delay=delay)
     res = sim.run(net, duration=125)
-    print res[2]["spikes"]
-    print res[2]["spikes"][0]
     if (len(res[2]["spikes"][0]) == 0):
         return weights["wCTExt"], max
     try:
