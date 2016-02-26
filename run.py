@@ -39,7 +39,7 @@ data_params = dict["data_params"]
 params = dict["neuron_params"]
 delay = dict["delay"]
 terminating_neurons = dict["terminating_neurons"]
-flag=dict["Simple_Network"]
+flag = dict["Simple_Network"]
 
 # Read in neuron weights, some still have to be set manually
 with open("data/optimised_weights.json", 'r') as outfile:
@@ -58,7 +58,8 @@ scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 sim = pynl.PyNNLess(sys.argv[1])
 net, input_indices, _, input_times = scm.build(params=params, weights=weights,
                                                delay=delay,
-                                               terminating_neurons=terminating_neurons,flag=flag)
+                                               terminating_neurons=terminating_neurons,
+                                               flag=flag)
 print "Preparations done"
 
 # Simulation
@@ -94,5 +95,5 @@ analysis = netw.NetworkAnalysis(input_times=input_times,
 
 # PyNNless sets the first input spikes to offset if they appear before the offset
 offset = max(sim.get_time_step(), 1.0)
-I, mat_out_res, errs = pyscm.scm_analysis(analysis, res[2][
-    "spikes"], offset, delay)
+I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start = pyscm.scm_analysis(
+    analysis, res[2]["spikes"], offset, delay)

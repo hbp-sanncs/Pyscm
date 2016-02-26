@@ -272,4 +272,4 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
                                                                             '.0f')
     print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t\t", format(fn,
                                                                             '.0f')
-    return I, mat_out_res, errs
+    return I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start

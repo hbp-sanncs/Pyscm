@@ -160,6 +160,7 @@ class WeightOptimisation:
         else:
             self.weights["wCA"] = weight
         return self
+
     # TODO: Optimisations for the simple model
     # Search for a optimal wCSigma, wCA should be set beforehand
     def optimise_wCSigma(self, wCSigma_min=None, wCSigma_max=-0.001):
