@@ -261,15 +261,15 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
     fn_start = sum(map(lambda x: x["fn"], errs_start))
 
     if (flag):
-        print "\t\t\t\t\t\tBiNAM \t\tSimple_Net"
+        print "\t\t\t\tBiNAM \t\tSimple_Net"
     else:
-        print "\t\t\t\t\t\tBiNAM \t\tSCM"
+        print "\t\t\t\tBiNAM \t\tSCM"
     print "Information:\t\t\t", format(I_start, '.2f'), "\t", format(I, '.2f')
-    print "Normalized information:\t", format(I_norm_start,
-                                              '.2f'), "\t\t", format(I_norm,
-                                                                     '.2f')
-    print "False positives:\t\t", format(fp_start, '.0f'), "\t\t\t", format(fp,
+    print "Normalized information:\t\t", format(I_norm_start,
+                                                '.2f'), "\t\t", format(I_norm,
+                                                                       '.2f')
+    print "False positives:\t\t", format(fp_start, '.0f'), "\t\t", format(fp,
                                                                             '.0f')
-    print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t\t", format(fn,
+    print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t", format(fn,
                                                                             '.0f')
     return I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start
