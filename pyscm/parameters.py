@@ -15,6 +15,7 @@ import numpy as np
 import pynnless.pynnless_isolated as pynl
 import pyscm
 import pynam.data as data
+import pynam.network as network
 import json
 
 
@@ -69,6 +70,7 @@ class WeightOptimisation:
                                      optimise_params[
                                          "wCH_max"]
         self.params = params
+        self.data_params = data_params
         self.n_ones_out = data_params["n_ones_out"]
         self.delay = delay
         self.terminating_neurons = terminating_neurons
@@ -150,6 +152,8 @@ class WeightOptimisation:
             raise Exception("Set wCSigma and wCH before optimising wCA!")
         if (max == None):
             wCA_max = self.wCH_max
+        else:
+            wCA_max = max
         wCA_min = self.weights["wCH"]
         while True:
             wCA_min, wCA_max = self.find_min(wCA_min, wCA_max, 2, "wCA")
@@ -241,3 +245,27 @@ class WeightOptimisation:
     def write_to_file(self, file="data/optimised_weights.json"):
         with open(file, 'w') as outfile:
             json.dump(self.weights, outfile, indent=4)
+
+    def full_run(self):
+        net, input_indices, _, input_times = self.scm.build(params=self.params,
+                                                            weights=self.weights,
+                                                            delay=self.delay,
+                                                            terminating_neurons=self.terminating_neurons,
+                                                            flag=self.flag)
+        res = self.sim.run(net)
+        output_times, output_indices = network.NetworkInstance.match_static(
+            input_times,
+            input_indices,
+            res[0][
+                "spikes"])
+        analysis = network.NetworkAnalysis(input_times=input_times,
+                                           input_indices=input_indices,
+                                           output_times=output_times,
+                                           output_indices=output_indices,
+                                           data_params=self.data_params,
+                                           mat_in=self.mat_in,
+                                           mat_out=self.mat_out)
+
+        I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start = pyscm.scm_analysis(
+            analysis, res[2]["spikes"], self.delay, self.flag)
+        return I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start
