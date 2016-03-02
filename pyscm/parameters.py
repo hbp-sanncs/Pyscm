@@ -177,7 +177,6 @@ class WeightOptimisation:
         while True:
             wCSigma_min, wCSigma_max = self.find_min(wCSigma_min, wCSigma_max,
                                                      2, "wCSigma")
-            print wCSigma_min, wCSigma_max
             if (np.abs(wCSigma_min - wCSigma_max) < 0.001):
                 break
         self.weights["wCSigma"] = wCSigma_min
@@ -227,7 +226,6 @@ class WeightOptimisation:
         while True:
             wCT_min, wCT_max = self.bisect_wCT(wCT_min, wCT_max,
                                                minimal_spike_count)
-            print wCT_min, wCT_max
             if (np.abs(wCT_min - wCT_max) < 0.001):
                 break
             if (wCT_min < 0):
