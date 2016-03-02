@@ -65,15 +65,13 @@ print "Data generated!"
 scm = pyscm.SpikeCounterModel(mat_in, mat_out)
 sim = pynl.PyNNLessIsolated(sys.argv[1])
 
-
-
 [I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start] = np.zeros(
     (8, n))
 values = np.linspace(0.1, 30, n)
 
 # Workaround for negative weights
 if (stri == "wCSigma"):
-    values = np.linspace(-0.1, -30, n)
+    values = np.linspace(-1, 0.001, n)
 
 # The first spikes below offset are shifted to offset, workaround for analysis
 if (sys.argv[1] == "nmmc1"):
@@ -105,6 +103,8 @@ for i in xrange(n):
         I[i], I_norm[i], fp[i], fn[i], I_start[i], I_norm_start[i], fp_start[i], \
         fn_start[i] = pyscm.scm_analysis(analysis, res[2]["spikes"], offset,
                                          delay)
+        if (fp[i]>data_params["n_samples"]*data_params["n_bits_out"]*0.5):
+            break
 
         # Assure that system doesn't terminate without auto-associative spiking
         times = np.zeros(len(res[0]["spikes"]))
@@ -121,14 +121,18 @@ for i in xrange(n):
         fn_start[i] = 0, 0, 0, 0, 0, 0, 0, 0
         print I[i]
 
+# These values are the same for every run. This is a work around to the except case above
+index=np.where (I_norm_start ==1)[0][0]
+I_start_ = I_start[index]
+I_norm_start_ = I_norm_start[index]
+fp_start_ = fp_start[index]
+fn_start_ = fn_start[index]
 
 # Write the data to the respective file
 with open("analysis/" + stri + "_sweep.txt", 'w') as outfile:
     outfile.write(
         "#weight,I, I_norm, fp ,fn ,I_start , I_norm_start, fp_start, fn_start\n")
     for i in xrange(n):
-        outfile.write(str(values[i]) + ',' + str(I[i]) +
-                      ',' + str(I_norm[i]) + ',' + str(fp[i]) +
-                      ',' + str(fn[i]) + ',' + str(I_start[i]) + ',' +
-                      str(I_norm_start[i]) + ',' + str(fp_start[i]) +
-                      ',' + str(fn_start[i]) + '\n')
+        outfile.write("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n" % (
+            values[i], I[i], I_norm[i], fp[i], fn[i], I_start_, I_norm_start_,
+            fp_start_, fn_start_))
