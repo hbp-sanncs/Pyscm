@@ -27,7 +27,8 @@ with open("data/neuron_data.json", 'r') as outfile:
 
 opti = par.WeightOptimisation(dict["data_params"], dict["neuron_params"],
                               dict["delay"], dict["optimise_params"],
-                              sys.argv[1])
+                              sys.argv[1], dict["terminating_neurons"],
+                              dict["Simple_Network"])
 # Optimisation process
 opti.do_standard_stuff()
 
