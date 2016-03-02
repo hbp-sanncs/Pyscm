@@ -103,6 +103,8 @@ for i in xrange(n):
         I[i], I_norm[i], fp[i], fn[i], I_start[i], I_norm_start[i], fp_start[i], \
         fn_start[i] = pyscm.scm_analysis(analysis, res[2]["spikes"], offset,
                                          delay)
+        if (fp[i]>data_params["n_samples"]*data_params["n_bits_out"]*0.5):
+            break
 
         # Assure that system doesn't terminate without auto-associative spiking
         times = np.zeros(len(res[0]["spikes"]))
