@@ -73,6 +73,7 @@ class WeightOptimisation:
         self.delay = delay
         self.terminating_neurons = terminating_neurons
         self.flag = flag
+        self.simulator = simulator
         print "Optimisation set up done!"
 
     # bisection for wCH
@@ -119,11 +120,11 @@ class WeightOptimisation:
             time = np.max(np.max(res[0]["spikes"]))
         except:
             return self.weights[str], max
-        if time < 120:
+        if time < 101.8:
             return self.weights[str], max
 
-        # Search in the interval [time-2*delay, time]
-        time -= 2 * self.delay
+        # Search in the interval [time-1*delay, time]
+        time -= 1 * self.delay
         # Count for number of ones in interval
         n = 0
         for i in res[0]["spikes"]:
@@ -131,20 +132,25 @@ class WeightOptimisation:
                 if j >= time:
                     n += 1
                     # If to active...
-                    if (n >= accuracy * self.n_ones_out):
+                    if (n > accuracy * self.n_ones_out):
                         return min, self.weights[str]
         # Either not active enough or good
+        if (n == self.n_ones_out):
+            return self.weights[str], self.weights[str]
         return self.weights[str], max
 
     # Set wCSigma if you want to optimise wCA
     def set_wCSigma(self, weight=-0.01):
         self.weights["wCSigma"] = weight
+        return self
 
     # Search for the optimal wCA, wCSigma should be set before
-    def optimise_wCA(self, min, max):
-        if (self.weights["wCSigma"] == 0):
-            raise Exception("Set wCSigma before optimising wCA!")
-        wCA_min, wCA_max = self.find_min(min, max, 2, "wCA")
+    def optimise_wCA(self, max=None):
+        if (self.weights["wCSigma"] == 0) or (self.weights["wCH"] == 0):
+            raise Exception("Set wCSigma and wCH before optimising wCA!")
+        if (max == None):
+            wCA_max = self.wCH_max
+        wCA_min = self.weights["wCH"]
         while True:
             wCA_min, wCA_max = self.find_min(wCA_min, wCA_max, 2, "wCA")
             if (wCA_max - wCA_min < 0.001):
@@ -170,10 +176,11 @@ class WeightOptimisation:
             wCSigma_min = - self.weights["wCA"]
         while True:
             wCSigma_min, wCSigma_max = self.find_min(wCSigma_min, wCSigma_max,
-                                                     1, "wCSigma")
+                                                     2, "wCSigma")
+            print wCSigma_min, wCSigma_max
             if (np.abs(wCSigma_min - wCSigma_max) < 0.001):
                 break
-        self.weights["wCSigma"] = wCSigma_max
+        self.weights["wCSigma"] = wCSigma_min
         print "wCSigma ready!"
         return self
 
@@ -220,6 +227,7 @@ class WeightOptimisation:
         while True:
             wCT_min, wCT_max = self.bisect_wCT(wCT_min, wCT_max,
                                                minimal_spike_count)
+            print wCT_min, wCT_max
             if (np.abs(wCT_min - wCT_max) < 0.001):
                 break
             if (wCT_min < 0):
