@@ -216,10 +216,11 @@ def calc_scm_output_matrix(netw, terminate_times, delay, flag=min):
     return res
 
 
-def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
+def scm_analysis(netw, terminate_times, delay=0.1, flag=False):
     """
     Anaylsis of the scm and compare to normal PyNAM (first spikes after input spike)
     :param netw: Should be of NetworkAnalysis type
+    :param flag: Simple model flag
     :return: Information in the SCM, output-matrix and an errors object
     """
 
@@ -233,11 +234,8 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
     tem, _, _ = pynam.network.NetworkInstance.flatten(netw["input_times"],
                                                       netw["input_indices"])
     start_times = np.unique(tem)
-    # PyNNless sets the first inputspikes to offset if they appear before the offset
     for i in xrange(len(start_times)):
-        if (start_times[i] < time_offs):
-            start_times[i] = time_offs
-    start_times = start_times + 0.98 + delay * 2.5
+        start_times = start_times + 0.98 + delay * 2.5
     # calc_scm_output_matrix needs such an array
     start_times_ar = np.zeros((2, len(start_times)))
     start_times_ar[0] = start_times
@@ -269,7 +267,7 @@ def scm_analysis(netw, terminate_times, time_offs, delay=0.1, flag=False):
                                                 '.2f'), "\t\t", format(I_norm,
                                                                        '.2f')
     print "False positives:\t\t", format(fp_start, '.0f'), "\t\t", format(fp,
-                                                                            '.0f')
+                                                                          '.0f')
     print "False negatives:\t\t", format(fn_start, '.0f'), "\t\t", format(fn,
-                                                                            '.0f')
+                                                                          '.0f')
     return I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start

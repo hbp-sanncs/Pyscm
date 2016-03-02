@@ -78,7 +78,7 @@ for pIdx, pop in enumerate(res):
     ax.set_xlabel("Spike time [ms]")
     ax.set_ylabel("Neuron index")
     ax.set_title("Population " + str(pIdx))
-plt.show()
+# plt.show()
 
 # Analyse
 output_times, output_indices = netw.NetworkInstance.match_static(input_times,
@@ -93,7 +93,5 @@ analysis = netw.NetworkAnalysis(input_times=input_times,
                                 data_params=data_params,
                                 mat_in=mat_in, mat_out=mat_out)
 
-# PyNNless sets the first input spikes to offset if they appear before the offset
-offset = max(sim.get_time_step(), 1.0)
 I, I_norm, fp, fn, I_start, I_norm_start, fp_start, fn_start = pyscm.scm_analysis(
-    analysis, res[2]["spikes"], offset, delay)
+    analysis, res[2]["spikes"], delay, flag)

@@ -73,12 +73,6 @@ values = np.linspace(0.1, 30, n)
 if (stri == "wCSigma"):
     values = np.linspace(-1, 0.001, n)
 
-# The first spikes below offset are shifted to offset, workaround for analysis
-if (sys.argv[1] == "nmmc1"):
-    offset = 1.0
-else:
-    offset = 0.1
-
 # The actual sweep
 for i in xrange(n):
     weights[stri] = values[i]
@@ -101,9 +95,8 @@ for i in xrange(n):
                                         data_params=data_params,
                                         mat_in=mat_in, mat_out=mat_out)
         I[i], I_norm[i], fp[i], fn[i], I_start[i], I_norm_start[i], fp_start[i], \
-        fn_start[i] = pyscm.scm_analysis(analysis, res[2]["spikes"], offset,
-                                         delay)
-        if (fp[i]>data_params["n_samples"]*data_params["n_bits_out"]*0.5):
+        fn_start[i] = pyscm.scm_analysis(analysis, res[2]["spikes"], delay)
+        if (fp[i] > data_params["n_samples"] * data_params["n_bits_out"] * 0.5):
             break
 
         # Assure that system doesn't terminate without auto-associative spiking
@@ -122,7 +115,7 @@ for i in xrange(n):
         print I[i]
 
 # These values are the same for every run. This is a work around to the except case above
-index=np.where (I_norm_start ==1)[0][0]
+index = np.where(I_norm_start == 1)[0][0]
 I_start_ = I_start[index]
 I_norm_start_ = I_norm_start[index]
 fp_start_ = fp_start[index]
